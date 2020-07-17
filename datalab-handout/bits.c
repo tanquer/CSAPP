@@ -1,7 +1,7 @@
 /* 
  * CS:APP Data Lab 
  * 
- * <Please put your name and userid here>
+ * qiyetan
  * 
  * bits.c - Source file with your solutions to the Lab.
  *          This is the file you will hand in to your instructor.
@@ -143,7 +143,7 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+  return ~(~((~x) & y) & ~(x & (~y)));
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,8 +152,7 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
+  return 1 << 31;
 
 }
 //2
@@ -165,7 +164,7 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  return (!(2 + x + x)) & (!!(~x));
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +175,8 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  int y = 0x55 + (0x55 << 8) + (0x55 << 16) + (0x55 << 24);
+  return !~(x | y);
 }
 /* 
  * negate - return -x 
@@ -186,7 +186,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return ~x + 1;
 }
 //3
 /* 
@@ -199,7 +199,7 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  return !((x + ~48 + 1) >> 31) & ((x + ~58 + 1) >> 31);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -209,7 +209,8 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int t = ~(!x) + 1; //t = 0xffffffff, if x = 0; otherwise, t = 0;
+  return (t & z) | (~t & y);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -219,7 +220,9 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int _x = x >> 31;
+  int _y = y >> 31;
+  return (!_y | _x) & (!(_y | !_x) | !((y + ~x + 1) >> 31));
 }
 //4
 /* 
@@ -231,7 +234,8 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  int y = ~x + 1;
+  return ((~y & ~x) >> 31) & 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -246,7 +250,26 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int temp = x ^ (x >> 31); // x >= 0, then temp = x; x < 0, then temp = ~x
+  int isZero = !temp;
+  //notZeroMask is 0xffffffff if x != 0
+  int notZeroMask = ( !!temp << 31 ) >> 31;
+  int bit_16, bit_8, bit_4, bit_2, bit_1;
+  bit_16 = !!(temp >> 16) << 4;
+  //see if the high 16bits have value,if have,then we need at least 16 bits
+  //if the highest 16 bits have value,then right shift 16 to see the exact place of  
+  //if not means they are all zero,right shift nothing and we should only consider the low 16 bits
+  temp = temp >> bit_16;
+  bit_8 = !!(temp >> 8) << 3;
+  temp = temp >> bit_8;
+  bit_4 = !!(temp >> 4) << 2;
+  temp = temp >> bit_4;
+  bit_2 = !!(temp >> 2) << 1;
+  temp = temp >> bit_2;
+  bit_1 = temp >> 1;
+  temp = bit_16 + bit_8 + bit_4 + bit_2 + bit_1 + 2; //at least we need one bit for lowest site,
+  //and we need another bit for sign
+  return isZero | (temp & notZeroMask);
 }
 //float
 /* 
@@ -261,7 +284,25 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  int exp = uf & 0x7f800000;
+  int sign = uf & 0x80000000;
+  //Inf or NaN
+  if (exp == 0x7f800000) {
+    return uf;
+  }
+  //denormalize
+  if ((uf & 0x7f800000) == 0x00000000) {
+    return (uf << 1) | sign;
+  }
+  //max exp
+  if ((uf & 0x7f000000) == 0x7f000000) {
+    return 0x7f800000 | sign;
+  }
+  //normalize
+  else {
+    int _exp = exp + 0x00800000;
+    return (uf & 0x007fffff) | _exp | sign;
+  }
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -276,7 +317,35 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  int sign = uf & 0x80000000;
+  int frac_mask = 0x007fffff;
+  int overflow = (0x4f000000 + ~(uf & 0x7fffffff) + 1);
+  // less than 1 or equal 1
+  if ((uf & 0x40000000) == 0x00000000) {
+    if ((uf & 0x3f800000) == 0x3f800000) {
+      if (sign) {
+        return -1;
+      } else {
+        return 1;
+      }
+    } else {
+      return 0;
+    }
+  }
+  //overflow
+  if (overflow & 0x80000000){
+    return 0x80000000u;
+  }
+  else {
+    int shift = ((uf & 0x0f800000) >> 23) + 1 + (~23 + 1);
+    // if negative
+    if (shift & 0x80000000) {
+      shift = ~shift + 1;
+      return (((uf & frac_mask) | 0x01000000) >> shift) | sign;
+    } else {
+      return (((uf & frac_mask) | 0x01000000) << shift) | sign;
+    }
+  }
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -292,5 +361,20 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  int sign = x & 0x80000000;
+  // denorm
+  if (sign && ((x + 125) & 0x80000000)) {
+    // too small
+    if ((x + 149) & 0x80000000) {
+      return 0;
+    }
+    int shift = ~(x + 126) + 1;
+    return (0x00800000 >> shift);
+  } else {
+    // too big
+    if ((127 + ~x + 1) & 0x80000000) {
+      return 0x7f800000;
+    }
+    return (x + 127) << 23;
+  }
 }
