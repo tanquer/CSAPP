@@ -362,13 +362,14 @@ int floatFloat2Int(unsigned uf) {
  */
 unsigned floatPower2(int x) {
   int sign = x & 0x80000000;
+  int shift;
   // denorm
   if (sign && ((x + 125) & 0x80000000)) {
     // too small
     if ((x + 149) & 0x80000000) {
       return 0;
     }
-    int shift = ~(x + 126) + 1;
+    shift = ~(x + 126) + 1;
     return (0x00800000 >> shift);
   } else {
     // too big
