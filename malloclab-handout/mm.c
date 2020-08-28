@@ -1,6 +1,8 @@
 /*
  * reference : https://github.com/mightydeveloper/Malloc-Lab/blob/master/mm.c
- * 
+ * Use segregated list organized by 2^k size.
+ * No Realloc TAG (useless), use coalesce to improve the realloc util.
+ * Score: 98/100
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -334,7 +336,7 @@ void *mm_realloc(void *ptr, size_t size)
         void *new_ptr = coalesce(ptr, 0);
         size_t new_size = GET_SIZE(HDRP(new_ptr));
         if (new_size >= size) {
-            memmove(new_ptr, ptr, oldsize);         // The memory areas may overlap
+            memmove(new_ptr, ptr, oldsize);         // The memory areas may overlap, use memmove instead of memcpy
             PUT(HDRP(new_ptr), PACK(new_size, 1));
             PUT(FTRP(new_ptr), PACK(new_size, 1));
             return new_ptr;
